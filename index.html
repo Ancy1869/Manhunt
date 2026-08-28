@@ -101,6 +101,15 @@
     opacity:0; transition:opacity .3s; pointer-events:none; text-transform:uppercase;
   }
   .zone-warn.show{opacity:1;}
+
+  .recenter-btn{
+    position:absolute; right:14px; bottom:calc(38vh + 14px); z-index:500;
+    width:46px;height:46px;border-radius:50%;
+    background:rgba(13,21,18,0.92); border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    box-shadow:0 2px 8px rgba(0,0,0,0.4);
+  }
+  .recenter-btn svg{width:22px;height:22px;stroke:var(--runner);}
   .leaflet-control-attribution{background:rgba(10,15,12,0.7)!important;color:var(--muted)!important;font-size:9px!important;}
   .leaflet-control-attribution a{color:var(--muted)!important;}
   .leaflet-control-zoom{display:none;}
@@ -198,14 +207,29 @@
   <!-- JOIN -->
   <div id="screen-join" class="screen active">
     <div class="grid-bg"></div>
-    <div class="join-card">
+
+    <!-- Hauptmenü: Erstellen oder Beitreten -->
+    <div class="join-card" id="menu-main">
       <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
       <div class="eyebrow">GPS Reveal · Live-Ortung</div>
       <h1>MANHUNT</h1>
       <div class="sub">Läufer werden in festen Intervallen für die Jäger sichtbar. Jäger sehen sich untereinander live. Läufer sehen die Jäger nie.</div>
 
-      <label>Session-Code (leer = neue Runde erstellen)</label>
-      <input type="text" id="code" placeholder="Z.B. FOX7" maxlength="8" autocomplete="off">
+      <button class="primary-btn" id="menu-create-btn" style="margin-top:26px;">Neue Runde erstellen</button>
+      <button class="primary-btn" id="menu-join-btn" style="margin-top:12px;background:var(--panel-2);color:var(--runner);border:1px solid var(--runner);">Runde beitreten</button>
+    </div>
+
+    <!-- Formular: erscheint erst nach Auswahl -->
+    <div class="join-card" id="menu-form" style="display:none;">
+      <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+      <div class="eyebrow" id="form-eyebrow">GPS Reveal · Live-Ortung</div>
+      <h1 id="form-title">MANHUNT</h1>
+      <div class="sub" id="form-sub"></div>
+
+      <div id="code-field">
+        <label id="code-label">Session-Code</label>
+        <input type="text" id="code" placeholder="Z.B. FOX7" maxlength="8" autocomplete="off">
+      </div>
 
       <label>Dein Name</label>
       <input type="text" id="name" placeholder="Spielername" maxlength="18" autocomplete="off">
@@ -216,26 +240,27 @@
         <div class="team-btn" id="btn-hunter">Jäger</div>
       </div>
 
-      <label>Reveal-Intervall (nur relevant beim Erstellen)</label>
-      <div class="interval-row" id="ival-row">
-        <div class="ival-btn" data-v="1">1 min</div>
-        <div class="ival-btn sel" data-v="3">3 min</div>
-        <div class="ival-btn" data-v="5">5 min</div>
-        <div class="ival-btn" data-v="10">10 min</div>
-      </div>
-      <div class="hint">Existiert der Code schon, gilt das Intervall der bestehenden Runde.</div>
+      <div id="create-only-fields">
+        <label>Reveal-Intervall</label>
+        <div class="interval-row" id="ival-row">
+          <div class="ival-btn" data-v="1">1 min</div>
+          <div class="ival-btn sel" data-v="3">3 min</div>
+          <div class="ival-btn" data-v="5">5 min</div>
+          <div class="ival-btn" data-v="10">10 min</div>
+        </div>
 
-      <label>Spielgebiet-Radius (nur beim Erstellen, Mittelpunkt = dein Standort jetzt)</label>
-      <div class="interval-row" id="zone-row">
-        <div class="ival-btn" data-z="300">300 m</div>
-        <div class="ival-btn sel" data-z="800">800 m</div>
-        <div class="ival-btn" data-z="1500">1,5 km</div>
-        <div class="ival-btn" data-z="0">Aus</div>
+        <label>Spielgebiet-Radius (Mittelpunkt = dein Standort jetzt)</label>
+        <div class="interval-row" id="zone-row">
+          <div class="ival-btn" data-z="300">300 m</div>
+          <div class="ival-btn sel" data-z="800">800 m</div>
+          <div class="ival-btn" data-z="1500">1,5 km</div>
+          <div class="ival-btn" data-z="0">Aus</div>
+        </div>
       </div>
-      <div class="hint">Warnt Spieler, wenn sie das Gebiet verlassen. Gilt nur, wenn du die Runde neu erstellst.</div>
 
       <button class="primary-btn" id="join-btn" disabled>Standort freigeben & Beitreten</button>
       <div class="err" id="err"></div>
+      <div id="back-to-menu" style="text-align:center;margin-top:16px;font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--muted);cursor:pointer;text-transform:uppercase;">← Zurück</div>
     </div>
   </div>
 
@@ -255,6 +280,12 @@
     </div>
     <div class="toast" id="toast"></div>
     <div class="zone-warn" id="zone-warn">⚠ Außerhalb des Spielgebiets</div>
+    <div class="recenter-btn" id="recenter-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
+      </svg>
+    </div>
     <div class="hud-bottom">
       <div class="roster">
         <div class="roster-head" id="roster-toggle">
@@ -330,6 +361,36 @@
     setTimeout(()=>t.classList.remove('show'), 2200);
   }
 
+  // ---------- HAUPTMENÜ: Erstellen / Beitreten ----------
+  let menuMode = null; // 'create' | 'join'
+
+  $('menu-create-btn').addEventListener('click', ()=>openForm('create'));
+  $('menu-join-btn').addEventListener('click', ()=>openForm('join'));
+  $('back-to-menu').addEventListener('click', ()=>{
+    $('menu-main').style.display='';
+    $('menu-form').style.display='none';
+  });
+
+  function openForm(mode){
+    menuMode = mode;
+    $('menu-main').style.display='none';
+    $('menu-form').style.display='';
+    if(mode==='create'){
+      $('form-eyebrow').textContent='Neue Runde';
+      $('form-title').textContent='ERSTELLEN';
+      $('form-sub').textContent='Du legst Reveal-Intervall und Spielgebiet fest. Teile den Code danach mit den anderen.';
+      $('code-field').style.display='none';
+      $('create-only-fields').style.display='';
+    } else {
+      $('form-eyebrow').textContent='Runde beitreten';
+      $('form-title').textContent='BEITRETEN';
+      $('form-sub').textContent='Gib den Code ein, den euch der Ersteller der Runde geschickt hat.';
+      $('code-field').style.display='';
+      $('create-only-fields').style.display='none';
+    }
+    validateJoin();
+  }
+
   // ---------- JOIN SCREEN LOGIC ----------
   let chosenTeam=null, chosenInterval=3;
 
@@ -362,9 +423,11 @@
   });
   $('name').addEventListener('input', validateJoin);
   function validateJoin(){
-    const ok = $('name').value.trim().length>0 && chosenTeam;
+    const codeOk = menuMode==='create' || $('code').value.trim().length>0;
+    const ok = $('name').value.trim().length>0 && chosenTeam && codeOk;
     $('join-btn').disabled = !ok;
   }
+  $('code').addEventListener('input', validateJoin);
 
   $('join-btn').addEventListener('click', joinGame);
 
@@ -374,7 +437,7 @@
     $('join-btn').textContent='Standort wird angefragt...';
 
     let code = $('code').value.trim().toUpperCase();
-    if(!code){ code = genId().slice(0,4).toUpperCase(); }
+    if(menuMode==='create' && !code){ code = genId().slice(0,4).toUpperCase(); }
     state.code = code;
     state.name = $('name').value.trim();
     state.team = chosenTeam;
@@ -394,8 +457,8 @@
         await writePlayerDoc(true);
         startGeoWatch();
         startTimers();
-        initMap();
         showScreen('screen-game');
+        initMap();
         $('role-chip').classList.add(state.team==='jaeger'?'role-hunter':'role-runner');
         $('role-chip').querySelector('.l2').textContent = state.team==='jaeger' ? 'JÄGER' : 'LÄUFER';
         $('roster-title').textContent = 'Session ' + state.code + ' · Spieler';
@@ -525,6 +588,11 @@
       iconSize:[38,38], iconAnchor:[19,19]
     });
     state.selfMarker = L.marker([state.lat, state.lng], {icon:selfIcon, zIndexOffset:1000}).addTo(state.map);
+
+    // Safari/iOS berechnet die Containergröße manchmal erst verzögert korrekt -
+    // invalidateSize erzwingt ein Neu-Layout der Karte.
+    setTimeout(()=>{ if(state.map) state.map.invalidateSize(); }, 100);
+    setTimeout(()=>{ if(state.map) state.map.invalidateSize(); }, 500);
   }
 
   function updateSelfMarker(){
@@ -685,11 +753,19 @@
     $('role-chip').classList.remove('role-hunter','role-runner');
     $('timer-chip').style.display='';
     $('join-btn').disabled=true; $('join-btn').textContent='Standort freigeben & Beitreten';
+    $('menu-main').style.display='';
+    $('menu-form').style.display='none';
+    menuMode=null;
     showScreen('screen-join');
   }
 
   $('leave-btn').addEventListener('click', leaveGame);
   $('caught-leave-btn').addEventListener('click', leaveGame);
+  $('recenter-btn').addEventListener('click', ()=>{
+    if(state.map && state.lat!=null){
+      state.map.setView([state.lat, state.lng], Math.max(state.map.getZoom(), 17), {animate:true});
+    }
+  });
 
 })();
 </script>
