@@ -93,7 +93,7 @@
   /* ---------- GAME SCREEN ---------- */
   #screen-game{position:absolute;inset:0;}
   #map{position:absolute;inset:0;background:#0a0f0c;filter:none;}
-  .leaflet-tile{filter:saturate(0.35) brightness(0.75) contrast(1.15);}
+  .leaflet-tile{filter:invert(1) grayscale(0.6) brightness(0.85) hue-rotate(180deg) saturate(0.6);}
   .zone-warn{
     position:absolute; top:70px; left:50%; transform:translateX(-50%);
     background:rgba(239,68,68,0.15); border:1px solid var(--danger); color:var(--danger);
@@ -511,10 +511,9 @@
   // ---------- map ----------
   function initMap(){
     state.map = L.map('map', {zoomControl:false, attributionControl:true}).setView([state.lat, state.lng], 17);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20,
-      subdomains: 'abcd',
-      attribution: '&copy; OpenStreetMap &copy; CARTO'
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
     }).addTo(state.map);
 
     if(state.zone && state.zone.center){
