@@ -139,6 +139,49 @@
     box-shadow:0 2px 8px rgba(0,0,0,0.4);
   }
   .recenter-btn svg{width:22px;height:22px;stroke:var(--runner);}
+
+  .compass-wrap{
+    position:absolute; left:14px; bottom:calc(38vh + 14px); z-index:500;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+  }
+  .compass-dial{
+    position:relative; width:120px; height:120px; border-radius:50%;
+    background:rgba(13,21,18,0.92); border:1px solid var(--border);
+    box-shadow:0 2px 10px rgba(0,0,0,0.5);
+  }
+  .compass-dial::before{
+    content:''; position:absolute; inset:10px; border-radius:50%;
+    border:1px dashed var(--border);
+  }
+  .compass-tick{
+    position:absolute; font-family:var(--mono); font-size:10px; color:var(--muted); font-weight:700;
+  }
+  .compass-tick.n{top:4px; left:50%; transform:translateX(-50%); color:var(--runner);}
+  .compass-tick.s{bottom:4px; left:50%; transform:translateX(-50%);}
+  .compass-tick.e{right:5px; top:50%; transform:translateY(-50%);}
+  .compass-tick.w{left:5px; top:50%; transform:translateY(-50%);}
+  .compass-center-dot{
+    position:absolute; top:50%; left:50%; width:6px; height:6px; margin:-3px;
+    border-radius:50%; background:var(--text);
+  }
+  .compass-needle{
+    position:absolute; top:50%; left:50%; width:10px; height:10px; margin:-5px;
+    display:flex; flex-direction:column; align-items:center; transition: left .4s ease, top .4s ease, opacity .4s;
+  }
+  .compass-needle .arrow{
+    width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent;
+    border-bottom:10px solid var(--hunter);
+  }
+  .compass-needle .clabel{
+    position:absolute; top:11px; white-space:nowrap; font-family:var(--mono); font-size:9px;
+    color:var(--hunter); background:rgba(13,21,18,0.9); padding:1px 4px; border-radius:2px;
+  }
+  .compass-enable{
+    background:rgba(13,21,18,0.92); border:1px solid var(--runner); color:var(--runner);
+    font-family:var(--mono); font-size:10px; letter-spacing:0.5px; padding:6px 10px; border-radius:2px;
+    cursor:pointer; text-align:center;
+  }
+
   .leaflet-control-attribution{background:rgba(10,15,12,0.7)!important;color:var(--muted)!important;font-size:9px!important;}
   .leaflet-control-attribution a{color:var(--muted)!important;}
   .leaflet-control-zoom{display:none;}
@@ -311,6 +354,10 @@
         <label style="margin-top:22px;">Spielgebiet-Radius <span class="slider-val" id="zone-val">800 m</span></label>
         <input type="range" class="slider" id="zone-slider" min="0" max="3" step="1" value="1">
         <div class="slider-ticks"><span>300m</span><span>800m</span><span>1,5km</span><span>Aus</span></div>
+
+        <label style="margin-top:22px;">Läufer-Kompass <span class="slider-val" id="vis-val">Nur Richtung</span></label>
+        <input type="range" class="slider" id="vis-slider" min="0" max="2" step="1" value="1">
+        <div class="slider-ticks"><span>Aus</span><span>Richtung</span><span>+ Entfernung</span></div>
       </div>
 
       <div class="hint" id="join-hint" style="display:none;">Team wird vom Ersteller der Runde in der Lobby vergeben.</div>
@@ -371,6 +418,19 @@
         <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
       </svg>
     </div>
+
+    <div class="compass-wrap" id="compass-wrap" style="display:none;">
+      <div class="compass-dial" id="compass-dial">
+        <div class="compass-tick n">N</div>
+        <div class="compass-tick e">O</div>
+        <div class="compass-tick s">S</div>
+        <div class="compass-tick w">W</div>
+        <div class="compass-center-dot"></div>
+        <div id="compass-needles"></div>
+      </div>
+      <div class="compass-enable" id="compass-enable-btn">📍 Kompass aktivieren</div>
+    </div>
+
     <div class="hud-bottom">
       <div class="roster">
         <div class="roster-head" id="roster-toggle">
@@ -447,7 +507,8 @@
     rosterCollapsed:false,
     zone:null, zoneCircle:null, outOfZone:false,
     isHost:false, hostId:null, ready:false, gameStarted:false,
-    configRef:null, playersRef:null, catchCode:null
+    configRef:null, playersRef:null, catchCode:null,
+    hunterVisibility:'off', deviceHeading:null, compassEnabled:false
   };
 
   function genId(){ return Math.random().toString(36).slice(2,9); }
@@ -528,6 +589,20 @@
     $('zone-val').textContent = ZONE_LABELS[idx];
     updateSliderFill(zoneSlider);
   });
+
+  const VIS_STEPS = ['off','direction','distance'];
+  const VIS_LABELS = ['Aus','Nur Richtung','Richtung + Entfernung'];
+  let chosenVisibility = 'direction';
+  const visSlider = $('vis-slider');
+  chosenVisibility = VIS_STEPS[parseInt(visSlider.value,10)];
+  $('vis-val').textContent = VIS_LABELS[parseInt(visSlider.value,10)];
+  updateSliderFill(visSlider);
+  visSlider.addEventListener('input', ()=>{
+    const idx = parseInt(visSlider.value,10);
+    chosenVisibility = VIS_STEPS[idx];
+    $('vis-val').textContent = VIS_LABELS[idx];
+    updateSliderFill(visSlider);
+  });
   $('name').addEventListener('input', validateJoin);
   function validateJoin(){
     const codeOk = menuMode==='create' || $('code').value.trim().length>0;
@@ -578,6 +653,7 @@
         state.intervalMin = cfg.intervalMin || 3;
         state.hostId = cfg.hostId;
         state.isHost = false;
+        state.hunterVisibility = cfg.hunterVisibility || 'off';
         if(cfg.zoneRadius){ state.zone = {center:{lat:cfg.zoneLat, lng:cfg.zoneLng}, radius:cfg.zoneRadius}; }
         if(cfg.started){
           $('err').textContent='Diese Runde läuft bereits.';
@@ -599,12 +675,13 @@
   }
 
   async function createSession(){
-    const cfg = {intervalMin: chosenInterval, createdAt: Date.now(), hostId: state.playerId, started:false};
+    const cfg = {intervalMin: chosenInterval, createdAt: Date.now(), hostId: state.playerId, started:false, hunterVisibility: chosenVisibility};
     if(chosenZoneRadius>0){
       cfg.zoneLat = state.lat; cfg.zoneLng = state.lng; cfg.zoneRadius = chosenZoneRadius;
       state.zone = {center:{lat:state.lat, lng:state.lng}, radius:chosenZoneRadius};
     }
     state.intervalMin = chosenInterval;
+    state.hunterVisibility = chosenVisibility;
     await db.ref('sessions/'+state.code+'/config').set(cfg);
   }
 
@@ -640,7 +717,7 @@
         if(self && self.caught && !state.caught){
           state.caught = true; stopAll(); showScreen('screen-caught'); return;
         }
-        renderMarkers(); renderRoster();
+        renderMarkers(); renderRoster(); renderCompass();
       }
     });
   }
@@ -731,6 +808,10 @@
     if(state.team==='laeufer'){
       $('own-code-line').style.display='';
       $('own-code-val').textContent = state.catchCode || '----';
+      if(state.hunterVisibility!=='off'){
+        $('compass-wrap').style.display='flex';
+        renderCompass();
+      }
     }
     $('roster-title').textContent = 'Session ' + state.code + ' · Spieler';
     showToast('Los geht\'s!');
@@ -740,7 +821,8 @@
   async function writePlayerDoc(isFirst){
     const now = Date.now();
     let reveal = { revealLat: null, revealLng: null, revealAt: 0 };
-    if(state.team==='laeufer'){
+    const needsReveal = state.team==='laeufer' || (state.team==='jaeger' && state.hunterVisibility!=='off');
+    if(needsReveal){
       const dueForReveal = isFirst || (now - state.lastRevealAt) >= state.intervalMin*60000;
       if(dueForReveal){
         state.lastRevealAt = now;
@@ -789,6 +871,7 @@
     const remain = Math.max(0, state.intervalMin*60000 - (Date.now()-state.lastRevealAt));
     const m = Math.floor(remain/60000), s = Math.floor((remain%60000)/1000);
     $('timer-val').textContent = m+':'+String(s).padStart(2,'0');
+    renderCompass();
   }
 
   // ---------- map ----------
@@ -818,6 +901,69 @@
   function updateSelfMarker(){
     if(state.selfMarker) state.selfMarker.setLatLng([state.lat, state.lng]);
     checkZone();
+    renderCompass();
+  }
+
+  function bearingDeg(lat1,lng1,lat2,lng2){
+    const toRad=d=>d*Math.PI/180, toDeg=r=>r*180/Math.PI;
+    const y = Math.sin(toRad(lng2-lng1))*Math.cos(toRad(lat2));
+    const x = Math.cos(toRad(lat1))*Math.sin(toRad(lat2)) - Math.sin(toRad(lat1))*Math.cos(toRad(lat2))*Math.cos(toRad(lng2-lng1));
+    return (toDeg(Math.atan2(y,x))+360)%360;
+  }
+
+  // ---------- Kompass (nur Läufer, zeigt Richtung/Entfernung zu Jägern) ----------
+  function handleOrientation(e){
+    let heading;
+    if(typeof e.webkitCompassHeading === 'number'){
+      heading = e.webkitCompassHeading; // iOS Safari: bereits Nordausrichtung
+    } else if(e.alpha!=null){
+      heading = (360 - e.alpha) % 360; // Android/Standard-Näherung
+    } else return;
+    state.deviceHeading = heading;
+    renderCompass();
+  }
+
+  $('compass-enable-btn').addEventListener('click', async ()=>{
+    try{
+      if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+        const perm = await DeviceOrientationEvent.requestPermission();
+        if(perm !== 'granted'){ showToast('Kompass-Zugriff verweigert'); return; }
+      }
+      window.addEventListener('deviceorientationabsolute', handleOrientation);
+      window.addEventListener('deviceorientation', handleOrientation);
+      state.compassEnabled = true;
+      $('compass-enable-btn').style.display='none';
+    }catch(e){ showToast('Kompass auf diesem Gerät nicht verfügbar'); }
+  });
+
+  function renderCompass(){
+    if(state.team!=='laeufer' || state.hunterVisibility==='off' || state.lat==null) return;
+    const container = $('compass-needles');
+    if(!container) return;
+    const heading = state.deviceHeading || 0;
+    const hunters = Object.values(state.players).filter(p=>p.team==='jaeger' && p.revealAt && p.revealLat!=null && !p.caught);
+    if(hunters.length===0){
+      container.innerHTML = '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap;">Keine Daten</div>';
+      return;
+    }
+    const radius = 42;
+    container.innerHTML = hunters.map(h=>{
+      const bearing = bearingDeg(state.lat, state.lng, h.revealLat, h.revealLng);
+      const rel = ((bearing - heading) % 360 + 360) % 360;
+      const rad = rel * Math.PI/180;
+      const x = 60 + Math.sin(rad)*radius;
+      const y = 60 - Math.cos(rad)*radius;
+      const ageMs = Date.now() - h.revealAt;
+      const stale = ageMs > state.intervalMin*60000*1.3;
+      const dist = distMeters(state.lat, state.lng, h.revealLat, h.revealLng);
+      const distTxt = state.hunterVisibility==='distance'
+        ? (dist<1000 ? Math.round(dist)+'m' : (dist/1000).toFixed(1)+'km')
+        : '';
+      return `<div class="compass-needle" style="left:${x}px;top:${y}px;opacity:${stale?0.4:1};transform:translate(-50%,-50%) rotate(${rel}deg);">
+        <div class="arrow"></div>
+        <div class="clabel" style="transform:rotate(${-rel}deg);">${escapeHtml(h.name)}${distTxt?' · '+distTxt:''}</div>
+      </div>`;
+    }).join('');
   }
 
   function drawZone(){
@@ -985,6 +1131,8 @@
     clearInterval(state.writeTimer); clearInterval(state.tickTimer);
     if(state.playersRef) state.playersRef.off();
     if(state.configRef) state.configRef.off();
+    window.removeEventListener('deviceorientationabsolute', handleOrientation);
+    window.removeEventListener('deviceorientation', handleOrientation);
   }
 
   async function leaveGame(){
@@ -1008,8 +1156,12 @@
     state.zone=null; state.zoneCircle=null; state.outOfZone=false;
     state.isHost=false; state.hostId=null; state.ready=false; state.gameStarted=false;
     state.lat=null; state.lng=null; state.team=null; state.geoWatchId=null; state.catchCode=null;
+    state.hunterVisibility='off'; state.deviceHeading=null; state.compassEnabled=false;
     $('zone-warn').classList.remove('show');
     $('own-code-line').style.display='none';
+    $('compass-wrap').style.display='none';
+    $('compass-enable-btn').style.display='';
+    $('compass-needles').innerHTML='';
     $('code').value=''; $('name').value='';
     $('ready-btn').classList.remove('is-ready'); $('ready-btn').textContent='Bereit';
     $('role-chip').classList.remove('role-hunter','role-runner');
