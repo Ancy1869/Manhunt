@@ -38,10 +38,18 @@
   }
 
   .screen{position:absolute;inset:0;display:none;flex-direction:column;}
+  #screen-lobby{align-items:center;justify-content:flex-start;padding:24px 24px 60px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  #screen-lobby .join-card{margin-top:max(6vh, 20px);}
   .screen.active{display:flex;}
 
   /* ---------- JOIN SCREEN ---------- */
-  #screen-join{align-items:center;justify-content:center;padding:24px;}
+  #screen-join{
+    align-items:center;justify-content:flex-start;
+    padding:24px 24px 60px;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #screen-join .join-card{margin-top:max(6vh, 20px);}
   .join-card{
     position:relative; z-index:1; width:100%;max-width:380px;
     background:var(--panel); border:1px solid var(--border); border-radius:2px;
@@ -81,6 +89,27 @@
   }
   .ival-btn.sel{border-color:var(--runner);color:var(--runner);background:var(--runner-dim);}
   .hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+
+  .slider-val{float:right;color:var(--runner);font-weight:700;text-transform:none;letter-spacing:0;}
+  input[type=range].slider{
+    -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:2px;
+    background:var(--border); outline:none; margin:6px 0 4px;
+  }
+  input[type=range].slider::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none; width:20px; height:20px; border-radius:50%;
+    background:var(--runner); border:3px solid #04120a; box-shadow:0 0 0 1px var(--runner); cursor:pointer;
+  }
+  input[type=range].slider::-moz-range-thumb{
+    width:20px; height:20px; border-radius:50%; background:var(--runner); border:3px solid #04120a;
+    box-shadow:0 0 0 1px var(--runner); cursor:pointer;
+  }
+  input[type=range].slider::-webkit-slider-runnable-track{
+    height:4px; border-radius:2px; background:linear-gradient(90deg, var(--runner) 0%, var(--runner) var(--fill,50%), var(--border) var(--fill,50%), var(--border) 100%);
+  }
+  .slider-ticks{
+    display:flex; justify-content:space-between; font-family:var(--mono); font-size:10px; color:var(--muted);
+    letter-spacing:0.5px; margin-bottom:4px;
+  }
 
   .primary-btn{
     width:100%;margin-top:24px;padding:15px;background:var(--runner);color:#04120a;border:none;
@@ -160,6 +189,29 @@
   .roster-row .status{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px;}
   .roster-row.caught .name{color:var(--danger);text-decoration:line-through;}
 
+  /* Lobby-spezifische Roster-Zeilen */
+  .lobby-row{
+    display:flex;align-items:center;gap:8px;padding:9px 6px;font-family:var(--mono);font-size:12px;
+    border-bottom:1px solid var(--border);
+  }
+  .lobby-row:last-child{border-bottom:none;}
+  .lobby-row .lname{flex:1;color:var(--text);display:flex;align-items:center;gap:6px;}
+  .lobby-row .host-tag{font-size:9px;color:var(--muted);border:1px solid var(--border);padding:1px 4px;border-radius:2px;}
+  .lobby-team-btns{display:flex;gap:4px;}
+  .lobby-team-btn{
+    padding:5px 8px;border:1px solid var(--border);background:var(--panel);color:var(--muted);
+    font-family:var(--mono);font-size:10px;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;
+  }
+  .lobby-team-btn.active-runner{border-color:var(--runner);color:var(--runner);background:var(--runner-dim);}
+  .lobby-team-btn.active-hunter{border-color:var(--hunter);color:var(--hunter);background:var(--hunter-dim);}
+  .ready-pill{
+    font-size:9px;letter-spacing:1px;padding:3px 7px;border-radius:10px;text-transform:uppercase;font-family:var(--mono);
+    border:1px solid var(--border);color:var(--muted);
+  }
+  .ready-pill.is-ready{border-color:var(--runner);color:var(--runner);}
+  .no-team-tag{font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
+  #ready-btn.is-ready{background:var(--panel-2);color:var(--runner);border:1px solid var(--runner);}
+
   .toast{
     position:absolute; top:70px; left:50%; transform:translateX(-50%);
     background:rgba(13,21,18,0.95); border:1px solid var(--runner); color:var(--runner);
@@ -195,7 +247,7 @@
   }
 
   /* ---------- CAUGHT SCREEN ---------- */
-  #screen-caught{align-items:center;justify-content:center;text-align:center;padding:24px;}
+  #screen-caught{align-items:center;justify-content:flex-start;text-align:center;padding:60px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
   #screen-caught .big{font-family:var(--mono);font-size:15px;letter-spacing:4px;color:var(--danger);text-transform:uppercase;margin-bottom:10px;}
   #screen-caught h2{font-family:var(--mono);font-size:26px;margin:0 0 14px;}
   #screen-caught p{color:var(--muted);max-width:320px;margin:0 auto 24px;line-height:1.6;font-size:13px;}
@@ -234,33 +286,48 @@
       <label>Dein Name</label>
       <input type="text" id="name" placeholder="Spielername" maxlength="18" autocomplete="off">
 
-      <label>Team</label>
-      <div class="team-pick">
-        <div class="team-btn" id="btn-runner">Läufer</div>
-        <div class="team-btn" id="btn-hunter">Jäger</div>
-      </div>
-
       <div id="create-only-fields">
-        <label>Reveal-Intervall</label>
-        <div class="interval-row" id="ival-row">
-          <div class="ival-btn" data-v="1">1 min</div>
-          <div class="ival-btn sel" data-v="3">3 min</div>
-          <div class="ival-btn" data-v="5">5 min</div>
-          <div class="ival-btn" data-v="10">10 min</div>
-        </div>
+        <label>Reveal-Intervall <span class="slider-val" id="ival-val">3 min</span></label>
+        <input type="range" class="slider" id="ival-slider" min="0" max="4" step="1" value="2">
+        <div class="slider-ticks"><span>30s</span><span>1m</span><span>3m</span><span>5m</span><span>10m</span></div>
 
-        <label>Spielgebiet-Radius (Mittelpunkt = dein Standort jetzt)</label>
-        <div class="interval-row" id="zone-row">
-          <div class="ival-btn" data-z="300">300 m</div>
-          <div class="ival-btn sel" data-z="800">800 m</div>
-          <div class="ival-btn" data-z="1500">1,5 km</div>
-          <div class="ival-btn" data-z="0">Aus</div>
-        </div>
+        <label style="margin-top:22px;">Spielgebiet-Radius <span class="slider-val" id="zone-val">800 m</span></label>
+        <input type="range" class="slider" id="zone-slider" min="0" max="3" step="1" value="1">
+        <div class="slider-ticks"><span>300m</span><span>800m</span><span>1,5km</span><span>Aus</span></div>
       </div>
 
-      <button class="primary-btn" id="join-btn" disabled>Standort freigeben & Beitreten</button>
+      <div class="hint" id="join-hint" style="display:none;">Team wird vom Ersteller der Runde in der Lobby vergeben.</div>
+
+      <button class="primary-btn" id="join-btn" disabled>Weiter zur Lobby</button>
       <div class="err" id="err"></div>
       <div id="back-to-menu" style="text-align:center;margin-top:16px;font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--muted);cursor:pointer;text-transform:uppercase;">← Zurück</div>
+    </div>
+  </div>
+
+  <!-- LOBBY -->
+  <div id="screen-lobby" class="screen">
+    <div class="grid-bg"></div>
+    <div class="join-card" style="max-width:420px;">
+      <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+      <div class="eyebrow">Lobby</div>
+      <h1 id="lobby-code">----</h1>
+      <div class="sub" id="lobby-sub">Code mit den Mitspielern teilen.</div>
+
+      <div class="roster" style="max-height:42vh;position:relative;background:var(--panel-2);margin-top:6px;">
+        <div class="roster-body" id="lobby-roster" style="padding:8px;"></div>
+      </div>
+
+      <div id="lobby-host-controls" style="display:none;">
+        <div class="hint" id="lobby-host-hint">Weise jedem Spieler ein Team zu. Sobald alle bereit sind, kannst du starten.</div>
+        <button class="primary-btn" id="start-btn" disabled>Runde starten</button>
+      </div>
+
+      <div id="lobby-guest-controls" style="display:none;">
+        <button class="primary-btn" id="ready-btn" style="margin-top:20px;">Bereit</button>
+        <div class="hint" id="lobby-guest-hint">Warte, bis der Host dir ein Team zuweist und die Runde startet…</div>
+      </div>
+
+      <div id="lobby-leave" style="text-align:center;margin-top:16px;font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--muted);cursor:pointer;text-transform:uppercase;">Lobby verlassen</div>
     </div>
   </div>
 
@@ -347,7 +414,9 @@
     pollTimer:null, tickTimer:null, writeTimer:null,
     players:{}, prevRevealAt:{}, caught:false,
     rosterCollapsed:false,
-    zone:null, zoneCircle:null, outOfZone:false
+    zone:null, zoneCircle:null, outOfZone:false,
+    isHost:false, hostId:null, ready:false, gameStarted:false,
+    configRef:null, playersRef:null
   };
 
   function genId(){ return Math.random().toString(36).slice(2,9); }
@@ -378,120 +447,256 @@
     if(mode==='create'){
       $('form-eyebrow').textContent='Neue Runde';
       $('form-title').textContent='ERSTELLEN';
-      $('form-sub').textContent='Du legst Reveal-Intervall und Spielgebiet fest. Teile den Code danach mit den anderen.';
+      $('form-sub').textContent='Du wirst Host: legst Intervall & Spielgebiet fest und weist in der Lobby die Teams zu.';
       $('code-field').style.display='none';
       $('create-only-fields').style.display='';
+      $('join-hint').style.display='none';
     } else {
       $('form-eyebrow').textContent='Runde beitreten';
       $('form-title').textContent='BEITRETEN';
       $('form-sub').textContent='Gib den Code ein, den euch der Ersteller der Runde geschickt hat.';
       $('code-field').style.display='';
       $('create-only-fields').style.display='none';
+      $('join-hint').style.display='';
     }
     validateJoin();
   }
 
-  // ---------- JOIN SCREEN LOGIC ----------
-  let chosenTeam=null, chosenInterval=3;
+  // ---------- JOIN / CREATE -> LOBBY ----------
+  let chosenInterval=3, chosenZoneRadius=800;
 
-  $('btn-runner').addEventListener('click', ()=>{
-    chosenTeam='laeufer';
-    $('btn-runner').classList.add('sel-runner'); $('btn-runner').classList.remove('sel-hunter');
-    $('btn-hunter').classList.remove('sel-hunter','sel-runner');
-    validateJoin();
+  const IVAL_STEPS = [0.5, 1, 3, 5, 10];       // Minuten (0.5 = 30 Sekunden)
+  const IVAL_LABELS = ['30 sek', '1 min', '3 min', '5 min', '10 min'];
+  const ZONE_STEPS = [300, 800, 1500, 0];      // Meter (0 = Aus)
+  const ZONE_LABELS = ['300 m', '800 m', '1,5 km', 'Aus'];
+
+  function updateSliderFill(el){
+    const pct = (el.value - el.min) / (el.max - el.min) * 100;
+    el.style.setProperty('--fill', pct + '%');
+  }
+
+  const ivalSlider = $('ival-slider');
+  chosenInterval = IVAL_STEPS[parseInt(ivalSlider.value,10)];
+  $('ival-val').textContent = IVAL_LABELS[parseInt(ivalSlider.value,10)];
+  updateSliderFill(ivalSlider);
+  ivalSlider.addEventListener('input', ()=>{
+    const idx = parseInt(ivalSlider.value,10);
+    chosenInterval = IVAL_STEPS[idx];
+    $('ival-val').textContent = IVAL_LABELS[idx];
+    updateSliderFill(ivalSlider);
   });
-  $('btn-hunter').addEventListener('click', ()=>{
-    chosenTeam='jaeger';
-    $('btn-hunter').classList.add('sel-hunter'); $('btn-hunter').classList.remove('sel-runner');
-    $('btn-runner').classList.remove('sel-hunter','sel-runner');
-    validateJoin();
-  });
-  document.querySelectorAll('#ival-row .ival-btn').forEach(b=>{
-    b.addEventListener('click', ()=>{
-      document.querySelectorAll('#ival-row .ival-btn').forEach(x=>x.classList.remove('sel'));
-      b.classList.add('sel');
-      chosenInterval=parseInt(b.dataset.v,10);
-    });
-  });
-  let chosenZoneRadius=800;
-  document.querySelectorAll('#zone-row .ival-btn').forEach(b=>{
-    b.addEventListener('click', ()=>{
-      document.querySelectorAll('#zone-row .ival-btn').forEach(x=>x.classList.remove('sel'));
-      b.classList.add('sel');
-      chosenZoneRadius=parseInt(b.dataset.z,10);
-    });
+
+  const zoneSlider = $('zone-slider');
+  chosenZoneRadius = ZONE_STEPS[parseInt(zoneSlider.value,10)];
+  $('zone-val').textContent = ZONE_LABELS[parseInt(zoneSlider.value,10)];
+  updateSliderFill(zoneSlider);
+  zoneSlider.addEventListener('input', ()=>{
+    const idx = parseInt(zoneSlider.value,10);
+    chosenZoneRadius = ZONE_STEPS[idx];
+    $('zone-val').textContent = ZONE_LABELS[idx];
+    updateSliderFill(zoneSlider);
   });
   $('name').addEventListener('input', validateJoin);
   function validateJoin(){
     const codeOk = menuMode==='create' || $('code').value.trim().length>0;
-    const ok = $('name').value.trim().length>0 && chosenTeam && codeOk;
+    const ok = $('name').value.trim().length>0 && codeOk;
     $('join-btn').disabled = !ok;
   }
   $('code').addEventListener('input', validateJoin);
 
-  $('join-btn').addEventListener('click', joinGame);
+  $('join-btn').addEventListener('click', enterLobby);
 
-  async function joinGame(){
+  async function enterLobby(){
     $('err').textContent='';
     $('join-btn').disabled=true;
-    $('join-btn').textContent='Standort wird angefragt...';
+    $('join-btn').textContent='Verbinde…';
 
     let code = $('code').value.trim().toUpperCase();
-    if(menuMode==='create' && !code){ code = genId().slice(0,4).toUpperCase(); }
-    state.code = code;
     state.name = $('name').value.trim();
-    state.team = chosenTeam;
     state.playerId = genId();
     state.joinedAt = Date.now();
+    state.ready = false;
 
-    if(!navigator.geolocation){
-      $('err').textContent='Dieses Gerät unterstützt keine Standortfreigabe.';
-      $('join-btn').disabled=false; $('join-btn').textContent='Standort freigeben & Beitreten';
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(async (pos)=>{
-      state.lat=pos.coords.latitude; state.lng=pos.coords.longitude;
-      try{
-        await ensureSessionConfig();
-        await writePlayerDoc(true);
-        startGeoWatch();
-        startTimers();
-        showScreen('screen-game');
-        initMap();
-        $('role-chip').classList.add(state.team==='jaeger'?'role-hunter':'role-runner');
-        $('role-chip').querySelector('.l2').textContent = state.team==='jaeger' ? 'JÄGER' : 'LÄUFER';
-        $('roster-title').textContent = 'Session ' + state.code + ' · Spieler';
-        showToast('Beigetreten als ' + state.name);
-      }catch(e){
-        console.error(e);
-        $('err').textContent='Verbindung fehlgeschlagen. Nochmal versuchen.';
-        $('join-btn').disabled=false; $('join-btn').textContent='Standort freigeben & Beitreten';
+    try{
+      if(menuMode==='create'){
+        if(!navigator.geolocation) throw new Error('no-geo');
+        await new Promise((resolve, reject)=>{
+          navigator.geolocation.getCurrentPosition((pos)=>{
+            state.lat=pos.coords.latitude; state.lng=pos.coords.longitude;
+            resolve();
+          }, reject, {enableHighAccuracy:true, timeout:12000});
+        });
+        if(!code) code = genId().slice(0,4).toUpperCase();
+        state.code = code;
+        state.isHost = true; state.hostId = state.playerId;
+        await createSession();
+        await db.ref('sessions/'+state.code+'/players/'+state.playerId).set({
+          name: state.name, team: null, ready: false, isHost: true
+        });
+      } else {
+        state.code = code;
+        const snap = await db.ref('sessions/'+state.code+'/config').get();
+        if(!snap.exists()){
+          $('err').textContent='Session-Code nicht gefunden. Bitte prüfen.';
+          $('join-btn').disabled=false; $('join-btn').textContent='Weiter zur Lobby';
+          return;
+        }
+        const cfg = snap.val();
+        state.intervalMin = cfg.intervalMin || 3;
+        state.hostId = cfg.hostId;
+        state.isHost = false;
+        if(cfg.zoneRadius){ state.zone = {center:{lat:cfg.zoneLat, lng:cfg.zoneLng}, radius:cfg.zoneRadius}; }
+        if(cfg.started){
+          $('err').textContent='Diese Runde läuft bereits.';
+          $('join-btn').disabled=false; $('join-btn').textContent='Weiter zur Lobby';
+          return;
+        }
+        await db.ref('sessions/'+state.code+'/players/'+state.playerId).set({
+          name: state.name, team: null, ready: false, isHost: false
+        });
       }
-    }, (err)=>{
-      $('err').textContent='Standortzugriff verweigert oder nicht verfügbar. Bitte erlauben und erneut versuchen.';
-      $('join-btn').disabled=false; $('join-btn').textContent='Standort freigeben & Beitreten';
-    }, {enableHighAccuracy:true, timeout:12000});
+      enterLobbyScreen();
+    }catch(e){
+      console.error(e);
+      $('err').textContent = e && e.message==='no-geo'
+        ? 'Standort wird zum Erstellen der Runde benötigt.'
+        : 'Verbindung fehlgeschlagen. Nochmal versuchen.';
+      $('join-btn').disabled=false; $('join-btn').textContent='Weiter zur Lobby';
+    }
   }
 
-  async function ensureSessionConfig(){
-    const ref = db.ref('sessions/'+state.code+'/config');
-    const snap = await ref.get();
-    if(snap.exists()){
-      const cfg = snap.val();
-      state.intervalMin = cfg.intervalMin || 3;
-      if(cfg.zoneRadius){
-        state.zone = {center:{lat:cfg.zoneLat, lng:cfg.zoneLng}, radius:cfg.zoneRadius};
-      }
-      return;
-    }
-    state.intervalMin = chosenInterval;
-    const cfg = {intervalMin: state.intervalMin, createdAt: Date.now()};
+  async function createSession(){
+    const cfg = {intervalMin: chosenInterval, createdAt: Date.now(), hostId: state.playerId, started:false};
     if(chosenZoneRadius>0){
       cfg.zoneLat = state.lat; cfg.zoneLng = state.lng; cfg.zoneRadius = chosenZoneRadius;
       state.zone = {center:{lat:state.lat, lng:state.lng}, radius:chosenZoneRadius};
     }
-    await ref.set(cfg);
+    state.intervalMin = chosenInterval;
+    await db.ref('sessions/'+state.code+'/config').set(cfg);
+  }
+
+  // ---------- LOBBY ----------
+  function enterLobbyScreen(){
+    showScreen('screen-lobby');
+    $('lobby-code').textContent = state.code;
+    $('lobby-sub').textContent = state.isHost
+      ? 'Teile diesen Code mit deinen Mitspielern.'
+      : 'Warte auf den Host.';
+    $('lobby-host-controls').style.display = state.isHost ? '' : 'none';
+    $('lobby-guest-controls').style.display = state.isHost ? 'none' : '';
+
+    state.configRef = db.ref('sessions/'+state.code+'/config');
+    state.configRef.on('value', (snap)=>{
+      const cfg = snap.val();
+      if(!cfg) return;
+      state.hostId = cfg.hostId;
+      state.isHost = (state.playerId === cfg.hostId);
+      if(cfg.started && !state.gameStarted){
+        state.gameStarted = true;
+        startGameplay();
+      }
+    });
+
+    state.playersRef = db.ref('sessions/'+state.code+'/players');
+    state.playersRef.on('value', (snap)=>{
+      state.players = snap.val() || {};
+      if(!state.gameStarted){
+        renderLobbyRoster();
+      } else {
+        const self = state.players[state.playerId];
+        if(self && self.caught && !state.caught){
+          state.caught = true; stopAll(); showScreen('screen-caught'); return;
+        }
+        renderMarkers(); renderRoster();
+      }
+    });
+  }
+
+  function renderLobbyRoster(){
+    const body = $('lobby-roster');
+    const list = Object.entries(state.players);
+    const rows = list.map(([pid,p])=>{
+      const isSelf = pid===state.playerId;
+      let teamHtml;
+      if(state.isHost){
+        teamHtml = `<div class="lobby-team-btns">
+          <div class="lobby-team-btn ${p.team==='laeufer'?'active-runner':''}" data-pid="${pid}" data-team="laeufer">Läufer</div>
+          <div class="lobby-team-btn ${p.team==='jaeger'?'active-hunter':''}" data-pid="${pid}" data-team="jaeger">Jäger</div>
+        </div>`;
+      } else {
+        teamHtml = p.team
+          ? `<span class="ready-pill ${p.team==='jaeger'?'':''}" style="border-color:${p.team==='jaeger'?'var(--hunter)':'var(--runner)'};color:${p.team==='jaeger'?'var(--hunter)':'var(--runner)'};">${p.team==='jaeger'?'Jäger':'Läufer'}</span>`
+          : `<span class="no-team-tag">Kein Team</span>`;
+      }
+      const readyHtml = p.isHost
+        ? `<span class="host-tag">HOST</span>`
+        : `<span class="ready-pill ${p.ready?'is-ready':''}">${p.ready?'Bereit':'Wartet'}</span>`;
+      return `<div class="lobby-row">
+        <div class="lname">${escapeHtml(p.name)}${isSelf?' <span style="color:var(--muted)">(Du)</span>':''}</div>
+        ${teamHtml}
+        ${readyHtml}
+      </div>`;
+    });
+    body.innerHTML = rows.join('') || '<div class="lobby-row" style="color:var(--muted)">Warte auf Spieler…</div>';
+
+    if(state.isHost){
+      body.querySelectorAll('.lobby-team-btn').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          db.ref('sessions/'+state.code+'/players/'+btn.dataset.pid+'/team').set(btn.dataset.team);
+        });
+      });
+      const allAssigned = list.every(([,p])=> !!p.team);
+      const nonHostReady = list.filter(([,p])=>!p.isHost).every(([,p])=> p.ready);
+      const canStart = list.length>=1 && allAssigned && nonHostReady;
+      $('start-btn').disabled = !canStart;
+      $('lobby-host-hint').textContent = !allAssigned
+        ? 'Weise noch nicht zugewiesenen Spielern ein Team zu.'
+        : (!nonHostReady ? 'Warte, bis alle Spieler auf „Bereit" getippt haben.' : 'Alle bereit — Runde kann gestartet werden.');
+    }
+  }
+
+  $('ready-btn').addEventListener('click', ()=>{
+    state.ready = !state.ready;
+    $('ready-btn').classList.toggle('is-ready', state.ready);
+    $('ready-btn').textContent = state.ready ? 'Bereit ✓' : 'Bereit';
+    db.ref('sessions/'+state.code+'/players/'+state.playerId+'/ready').set(state.ready);
+  });
+
+  $('start-btn').addEventListener('click', async ()=>{
+    if($('start-btn').disabled) return;
+    await db.ref('sessions/'+state.code+'/config').update({started:true, startedAt: Date.now()});
+  });
+
+  $('lobby-leave').addEventListener('click', leaveGame);
+
+  async function startGameplay(){
+    const self = state.players[state.playerId];
+    state.team = self ? self.team : null;
+    if(!state.team){
+      // Sicherheitsnetz: sollte nicht vorkommen, da Start das prüft
+      state.team = 'laeufer';
+    }
+    // Standort ggf. jetzt erst anfragen (Beitretende hatten ihn noch nicht)
+    if(state.lat===null){
+      try{
+        await new Promise((resolve, reject)=>{
+          navigator.geolocation.getCurrentPosition((pos)=>{
+            state.lat=pos.coords.latitude; state.lng=pos.coords.longitude;
+            resolve();
+          }, reject, {enableHighAccuracy:true, timeout:12000});
+        });
+      }catch(e){
+        showToast('Standort konnte nicht abgerufen werden.');
+      }
+    }
+    startGeoWatch();
+    startTimers();
+    showScreen('screen-game');
+    initMap();
+    $('role-chip').classList.add(state.team==='jaeger'?'role-hunter':'role-runner');
+    $('role-chip').querySelector('.l2').textContent = state.team==='jaeger' ? 'JÄGER' : 'LÄUFER';
+    $('roster-title').textContent = 'Session ' + state.code + ' · Spieler';
+    showToast('Los geht\'s!');
   }
 
   // ---------- storage write ----------
@@ -504,14 +709,9 @@
         state.lastRevealAt = now;
         reveal = { revealLat: state.lat, revealLng: state.lng, revealAt: now };
       } else {
-        // keep previous reveal snapshot by reading existing doc
-        try{
-          const snap = await db.ref('sessions/'+state.code+'/players/'+state.playerId).get();
-          if(snap.exists()){
-            const prev = snap.val();
-            reveal = { revealLat: prev.revealLat, revealLng: prev.revealLng, revealAt: prev.revealAt };
-          }
-        }catch(e){}
+        // vorheriges Reveal-Snapshot beibehalten
+        const prev = state.players[state.playerId] || {};
+        reveal = { revealLat: prev.revealLat||null, revealLng: prev.revealLng||null, revealAt: prev.revealAt||0 };
       }
     }
     const doc = {
@@ -521,7 +721,8 @@
       ...reveal
     };
     try{
-      await db.ref('sessions/'+state.code+'/players/'+state.playerId).set(doc);
+      // update() statt set(), damit isHost/ready-Felder in der Session erhalten bleiben
+      await db.ref('sessions/'+state.code+'/players/'+state.playerId).update(doc);
     }catch(e){ console.error('write failed', e); }
   }
 
@@ -536,29 +737,11 @@
     writeAndSchedule();
     state.writeTimer = setInterval(writeAndSchedule, 10000); // live write every 10s
     state.tickTimer = setInterval(updateTimerChip, 1000);
-    startRealtimeListener();
+    // playersRef-Listener läuft bereits seit der Lobby (siehe enterLobbyScreen) weiter
   }
   async function writeAndSchedule(){
     if(state.caught) return;
     await writePlayerDoc(false);
-  }
-
-  function startRealtimeListener(){
-    state.playersRef = db.ref('sessions/'+state.code+'/players');
-    state.playersRef.on('value', (snapshot)=>{
-      const newPlayers = snapshot.val() || {};
-      state.players = newPlayers;
-      // check own caught status
-      const self = newPlayers[state.playerId];
-      if(self && self.caught && !state.caught){
-        state.caught = true;
-        stopAll();
-        showScreen('screen-caught');
-        return;
-      }
-      renderMarkers();
-      renderRoster();
-    }, (err)=>{ console.error('listener failed', err); });
   }
 
   function updateTimerChip(){
@@ -734,6 +917,7 @@
     if(state.geoWatchId!==null) navigator.geolocation.clearWatch(state.geoWatchId);
     clearInterval(state.writeTimer); clearInterval(state.tickTimer);
     if(state.playersRef) state.playersRef.off();
+    if(state.configRef) state.configRef.off();
   }
 
   async function leaveGame(){
@@ -746,13 +930,14 @@
     if(state.map){ state.map.remove(); state.map=null; }
     state.markers={}; state.players={}; state.caught=false; state.lastRevealAt=0;
     state.zone=null; state.zoneCircle=null; state.outOfZone=false;
+    state.isHost=false; state.hostId=null; state.ready=false; state.gameStarted=false;
+    state.lat=null; state.lng=null; state.team=null; state.geoWatchId=null;
     $('zone-warn').classList.remove('show');
     $('code').value=''; $('name').value='';
-    chosenTeam=null;
-    document.querySelectorAll('.team-btn').forEach(b=>b.classList.remove('sel-hunter','sel-runner'));
+    $('ready-btn').classList.remove('is-ready'); $('ready-btn').textContent='Bereit';
     $('role-chip').classList.remove('role-hunter','role-runner');
     $('timer-chip').style.display='';
-    $('join-btn').disabled=true; $('join-btn').textContent='Standort freigeben & Beitreten';
+    $('join-btn').disabled=true; $('join-btn').textContent='Weiter zur Lobby';
     $('menu-main').style.display='';
     $('menu-form').style.display='none';
     menuMode=null;
