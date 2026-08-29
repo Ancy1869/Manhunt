@@ -155,6 +155,8 @@
   }
   .hud-chip .l1{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
   .hud-chip .l2{font-size:16px;font-weight:700;margin-top:2px;}
+  .hud-chip .l3{font-size:10px;letter-spacing:1px;color:var(--muted);margin-top:4px;text-transform:uppercase;}
+  .hud-chip .l3 span{color:var(--runner);font-weight:700;letter-spacing:2px;}
   .role-runner .l2{color:var(--runner);}
   .role-hunter .l2{color:var(--hunter);}
 
@@ -245,6 +247,21 @@
     0%{box-shadow:0 0 0 0 rgba(74,222,128,0.7);}
     100%{box-shadow:0 0 0 22px rgba(74,222,128,0);}
   }
+
+  .modal-overlay{
+    position:fixed;inset:0;z-index:2000;background:rgba(4,8,6,0.85);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+    backdrop-filter:blur(2px);
+  }
+  .modal-card{
+    position:relative;width:100%;max-width:340px;background:var(--panel);
+    border:1px solid var(--hunter);border-radius:2px;padding:24px 20px;
+  }
+  #catch-code-input{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:14px;font-family:var(--mono);border-radius:2px;
+  }
+  #catch-code-input:focus{outline:none;border-color:var(--hunter);}
 
   /* ---------- CAUGHT SCREEN ---------- */
   #screen-caught{align-items:center;justify-content:flex-start;text-align:center;padding:60px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
@@ -338,6 +355,7 @@
       <div class="hud-chip" id="role-chip">
         <div class="l1">Team</div>
         <div class="l2">—</div>
+        <div class="l3" id="own-code-line" style="display:none;">Code <span id="own-code-val">----</span></div>
       </div>
       <div class="hud-chip" id="timer-chip">
         <div class="l1">Nächster Reveal</div>
@@ -361,6 +379,19 @@
         </div>
         <div class="roster-body" id="roster-body"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- CATCH CODE MODAL -->
+  <div id="catch-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card">
+      <div class="eyebrow">Fang bestätigen</div>
+      <h2 id="catch-modal-name" style="font-family:var(--mono);font-size:20px;margin:0 0 8px;">Name</h2>
+      <div class="sub" style="margin-bottom:16px;">Lass dir den 4-stelligen Code zeigen, den diese Person auf ihrem Bildschirm sieht, und gib ihn hier ein.</div>
+      <input type="text" id="catch-code-input" inputmode="numeric" maxlength="4" placeholder="0000" style="text-align:center;font-size:22px;letter-spacing:8px;">
+      <div class="err" id="catch-modal-err"></div>
+      <button class="primary-btn" id="catch-confirm-btn" style="margin-top:16px;">Als geschnappt markieren</button>
+      <div id="catch-cancel-btn" style="text-align:center;margin-top:14px;font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--muted);cursor:pointer;text-transform:uppercase;">Abbrechen</div>
     </div>
   </div>
 
@@ -416,10 +447,11 @@
     rosterCollapsed:false,
     zone:null, zoneCircle:null, outOfZone:false,
     isHost:false, hostId:null, ready:false, gameStarted:false,
-    configRef:null, playersRef:null
+    configRef:null, playersRef:null, catchCode:null
   };
 
   function genId(){ return Math.random().toString(36).slice(2,9); }
+  function genCatchCode(){ return String(Math.floor(1000 + Math.random()*9000)); }
   function $(id){ return document.getElementById(id); }
   function showScreen(id){
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -529,9 +561,10 @@
         if(!code) code = genId().slice(0,4).toUpperCase();
         state.code = code;
         state.isHost = true; state.hostId = state.playerId;
+        state.catchCode = genCatchCode();
         await createSession();
         await db.ref('sessions/'+state.code+'/players/'+state.playerId).set({
-          name: state.name, team: null, ready: false, isHost: true
+          name: state.name, team: null, ready: false, isHost: true, catchCode: state.catchCode
         });
       } else {
         state.code = code;
@@ -552,7 +585,7 @@
           return;
         }
         await db.ref('sessions/'+state.code+'/players/'+state.playerId).set({
-          name: state.name, team: null, ready: false, isHost: false
+          name: state.name, team: null, ready: false, isHost: false, catchCode: (state.catchCode = genCatchCode())
         });
       }
       enterLobbyScreen();
@@ -695,6 +728,10 @@
     initMap();
     $('role-chip').classList.add(state.team==='jaeger'?'role-hunter':'role-runner');
     $('role-chip').querySelector('.l2').textContent = state.team==='jaeger' ? 'JÄGER' : 'LÄUFER';
+    if(state.team==='laeufer'){
+      $('own-code-line').style.display='';
+      $('own-code-val').textContent = state.catchCode || '----';
+    }
     $('roster-title').textContent = 'Session ' + state.code + ' · Spieler';
     showToast('Los geht\'s!');
   }
@@ -862,7 +899,7 @@
         const icon = L.divIcon({className:'', html, iconSize:[38,38], iconAnchor:[19,19]});
         const m = L.marker([lat,lng], {icon});
         if(state.team==='jaeger' && p.team==='laeufer'){
-          m.on('click', ()=>markCaught(pid, p.name));
+          m.on('click', ()=>openCatchModal(pid, p.name));
         }
         m.addTo(state.map);
         state.markers[pid]=m;
@@ -877,13 +914,43 @@
     }
   }
 
-  async function markCaught(pid, name){
-    if(!confirm(name+' als geschnappt markieren?')) return;
-    try{
-      await db.ref('sessions/'+state.code+'/players/'+pid).update({caught:true, caughtAt: Date.now()});
-      showToast(name+' geschnappt!');
-    }catch(e){ console.error(e); }
+  // ---------- Fang-Bestätigung per Code (wie AirDrop-Pairing) ----------
+  let catchTargetPid = null, catchTargetName = null;
+
+  function openCatchModal(pid, name){
+    catchTargetPid = pid; catchTargetName = name;
+    $('catch-modal-name').textContent = name;
+    $('catch-code-input').value = '';
+    $('catch-modal-err').textContent = '';
+    $('catch-modal').style.display = 'flex';
+    setTimeout(()=>$('catch-code-input').focus(), 50);
   }
+  function closeCatchModal(){
+    $('catch-modal').style.display = 'none';
+    catchTargetPid = null; catchTargetName = null;
+  }
+  $('catch-cancel-btn').addEventListener('click', closeCatchModal);
+  $('catch-modal').addEventListener('click', (e)=>{ if(e.target.id==='catch-modal') closeCatchModal(); });
+
+  $('catch-confirm-btn').addEventListener('click', async ()=>{
+    if(!catchTargetPid) return;
+    const entered = $('catch-code-input').value.trim();
+    const target = state.players[catchTargetPid];
+    const realCode = target ? target.catchCode : null;
+    if(!entered){
+      $('catch-modal-err').textContent = 'Bitte Code eingeben.';
+      return;
+    }
+    if(!realCode || entered !== realCode){
+      $('catch-modal-err').textContent = 'Falscher Code. Nochmal versuchen.';
+      return;
+    }
+    try{
+      await db.ref('sessions/'+state.code+'/players/'+catchTargetPid).update({caught:true, caughtAt: Date.now()});
+      showToast(catchTargetName+' geschnappt!');
+      closeCatchModal();
+    }catch(e){ console.error(e); $('catch-modal-err').textContent='Verbindungsfehler, nochmal versuchen.'; }
+  });
 
   function renderRoster(){
     const body = $('roster-body');
@@ -923,7 +990,16 @@
   async function leaveGame(){
     try{
       if(state.code && state.playerId){
-        await db.ref('sessions/'+state.code+'/players/'+state.playerId).remove();
+        if(state.isHost){
+          const wipe = confirm('Du bist Host. Zusätzlich zum Verlassen auch ALLE Daten dieser Runde dauerhaft aus der Datenbank löschen? (Positionen, Spielerliste, Einstellungen)');
+          if(wipe){
+            await db.ref('sessions/'+state.code).remove();
+          } else {
+            await db.ref('sessions/'+state.code+'/players/'+state.playerId).remove();
+          }
+        } else {
+          await db.ref('sessions/'+state.code+'/players/'+state.playerId).remove();
+        }
       }
     }catch(e){}
     stopAll();
@@ -931,8 +1007,9 @@
     state.markers={}; state.players={}; state.caught=false; state.lastRevealAt=0;
     state.zone=null; state.zoneCircle=null; state.outOfZone=false;
     state.isHost=false; state.hostId=null; state.ready=false; state.gameStarted=false;
-    state.lat=null; state.lng=null; state.team=null; state.geoWatchId=null;
+    state.lat=null; state.lng=null; state.team=null; state.geoWatchId=null; state.catchCode=null;
     $('zone-warn').classList.remove('show');
+    $('own-code-line').style.display='none';
     $('code').value=''; $('name').value='';
     $('ready-btn').classList.remove('is-ready'); $('ready-btn').textContent='Bereit';
     $('role-chip').classList.remove('role-hunter','role-runner');
